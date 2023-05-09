@@ -26,6 +26,7 @@ Last updated: 2023-05-09
 """
 
 from .critic import Critic
+from .ctgan import CTGAN
 from .generator import Generator
 from .residual import Residual
 
