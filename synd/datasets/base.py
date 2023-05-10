@@ -21,13 +21,23 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-File created: 2023-05-09
+File created: 2023-05-10
 Last updated: 2023-05-10
 """
 
-from .base import Synthesizer
-from .critic import Critic
-from .ctgan import CTGAN
-from .generator import Generator
-from .residual import Residual
+class Dataset(object):
+    """ Base dataset class for single- or multi-table databases. """
+
+    def fit(self, *args, **kwargs):
+        raise NotImplementedError(
+            f'No data fitting method is implemented for {self.__class__}. ',
+            f'Please implement fitting a `DataTransformer` with data, transform ',
+            f'the data, and create a `DataSampler` with the transformed data.',
+        )
+
+    def is_fitted(self, *args, **kwargs):
+        raise NotImplementedError(
+            f'No logic implemented to verify if `DataTransformer` has already been fitted. ',
+            f'Please implement this, e.g., in a `getattr` was as for `SingleTable`.',
+        )
 

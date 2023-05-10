@@ -28,13 +28,13 @@ Last updated: 2023-05-10
 class Synthesizer(object):
     """ Base synthesizer class for all synthetic data generator models. """
 
-    def fit(self, *args, *, **kwargs):
+    def fit(self, *args, **kwargs):
         raise NotImplementedError(
             f'No training method is implemented for {self.__class__}. ',
             f'Please implement a training process for synthesizer.',
         )
 
-    def sample(self, *args, *, **kwargs):
+    def sample(self, *args, **kwargs):
         raise NotImplementedError(
             f'No sampling method is implemented for {self.__class__}. ',
             f'Please implement a sampling process for the synthesizer.',

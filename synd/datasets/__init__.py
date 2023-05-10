@@ -25,6 +25,6 @@ File created: 2023-05-10
 Last updated: 2023-05-10
 """
 
-from .multi_table import MultiTable
+# from .multi_table import MultiTable
 from .single_table import SingleTable
 

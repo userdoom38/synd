@@ -39,10 +39,10 @@ from torch import optim
 from ctgan.data_sampler import DataSampler
 from ctgan.data_transformer import DataTransformer
 
-from .critic import Critic
-from .synthesizer import Synthesizer
-from .generator import Generator
 from synd.datasets import SingleTable 
+from .base import Synthesizer
+from .critic import Critic
+from .generator import Generator
 
 import builtins
 from typing import (
@@ -63,16 +63,15 @@ class CTGAN(Synthesizer):
     
     def __init__(self, *,
         embedding_dim: Integer = 128, 
-        generator_dims: Tuple[Integer] = (256, 256), 
-        critic_dims: Tuple[Integer] = (256, 256),
+        generator_dims: Tuple[Integer, ...] = (256, 256), 
+        critic_dims: Tuple[Integer, ...] = (256, 256),
         generator_lr: Float = 2e-4,
-        generator_decay: Float = 1e-6,
-        generator_betas: Tuple[Float] = (0.5, 0.9), 
         critic_lr: Float = 2e-4,
+        generator_decay: Float = 1e-6,
         critic_decay: Float = 1e-6, 
-        critic_betas: Tuple[Float] = (0.5, 0.9),
+        generator_betas: Tuple[Float, Float] = (0.5, 0.9), 
+        critic_betas: Tuple[Float, Float] = (0.5, 0.9),
         batch_size: Integer = 500, 
-        log_frequency: Boolean = True, 
         critic_steps: Integer = 1, 
         pac: Integer = 10,
         device: Union[String, torch.device] = 'cpu',
@@ -94,12 +93,12 @@ class CTGAN(Synthesizer):
 
         self._batch_size = batch_size
         self._critic_steps = critic_steps
-        self._loq_frequency = log_frequency
         self._pac = pac
         self._device = device
 
     def fit(self,
         dataset: SingleTable,
+        *,
         discrete_columns: List[String, ...],
         epochs: Integer = 100,
         **kwargs: Dict,
