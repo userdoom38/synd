@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 File created: 2023-05-09
-Last updated: 2023-05-09
+Last updated: 2023-05-10
 """
 
 from __future__ import annotations
@@ -40,7 +40,9 @@ from ctgan.data_sampler import DataSampler
 from ctgan.data_transformer import DataTransformer
 
 from .critic import Critic
+from .synthesizer import Synthesizer
 from .generator import Generator
+from synd.datasets import SingleTable 
 
 import builtins
 from typing import (
@@ -56,17 +58,26 @@ Boolean = builtins.bool
 
 logger = logging.getLogger(__name__)
 
-class CTGAN(object):
+class CTGAN(Synthesizer):
     """ Conditional Tabular Generative Adversarial Network. """
     
-    def __init__(self, embedding_dim: Integer = 128, generator_dims: Tuple[Integer] = (256, 256), 
-                 critic_dims: Tuple[Integer] = (256, 256), generator_lr: Float = 2e-4,
-                 generator_decay: Float = 1e-6, generator_betas: Tuple[Float] = (0.5, 0.9), 
-                 critic_lr: Float = 2e-4, critic_decay: Float = 1e-6, 
-                 critic_betas: Tuple[Float] = (0.5, 0.9),
-                 batch_size: Integer = 500, log_frequency: Boolean = True, 
-                 critic_steps: Integer = 1, pac: Integer = 10,
-                 device: Union[String, torch.device] = 'cpu', **kwargs: Dict):
+    def __init__(self, *,
+        embedding_dim: Integer = 128, 
+        generator_dims: Tuple[Integer] = (256, 256), 
+        critic_dims: Tuple[Integer] = (256, 256),
+        generator_lr: Float = 2e-4,
+        generator_decay: Float = 1e-6,
+        generator_betas: Tuple[Float] = (0.5, 0.9), 
+        critic_lr: Float = 2e-4,
+        critic_decay: Float = 1e-6, 
+        critic_betas: Tuple[Float] = (0.5, 0.9),
+        batch_size: Integer = 500, 
+        log_frequency: Boolean = True, 
+        critic_steps: Integer = 1, 
+        pac: Integer = 10,
+        device: Union[String, torch.device] = 'cpu',
+        **kwargs: Dict,
+    ):
 
         assert not batch_size % 2
 
@@ -87,32 +98,19 @@ class CTGAN(object):
         self._pac = pac
         self._device = device
 
-    def fit_data_transformer(self, data: Union[pd.DataFrame, np.ndarray], 
-                             discrete_columns: List[String], **kwargs: Dict):
-        """ Fit data transformer on training data. """
-        transformer = DataTransformer()
-        transformer.fit(data, discrete_columns)
-
-        if self._tarnsformer is not None:
-            logger.warning(
-                f'`DataTransformer` already exists but will be overwritten by new fit.'
-            )
-
-        self._transformer = transformer
-
-    def fit(self, data: Union[pd.DataFrame, np.ndarray], discrete_columns: List[String], epochs: Integer = 100):
+    def fit(self,
+        dataset: SingleTable,
+        discrete_columns: List[String, ...],
+        epochs: Integer = 100,
+        **kwargs: Dict,
+    ):
         """ Train the Wasserstein PacGAN on the provided training data. """
 
-        if self._transformer is None:
-            self.fit_data_transformer(data, discrete_columns)
+        if not dataset.is_fitted():
+            dataset.fit()
 
-        data = self._transformer.transform(data)
-
-        self._sampler = DataSampler(
-            data,
-            self._transformer.output_info_list,
-            self._log_frequency,
-        )
+        self._transformer = dataset.transformer()
+        self._sampler = dataset.sampler()
 
         data_dim = self._transformer.output_dimensions
         
