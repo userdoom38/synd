@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 File created: 2023-05-08
-Last updated: 2023-05-09
+Last updated: 2023-05-10
 """
 
 from __future__ import annotations
@@ -53,10 +53,16 @@ class Critic(nn.Module):
     [3] Ishaan Gulrajani., 2017 `https://arxiv.org/abs/1704.00028`
     """
 
-    def __init__(self, input_dim: Integer, critic_dims: List[Integer],
-                 negative_slope: Float = 0.2, dropout: Float = 0.5,
-                 pac: Integer = 10, device: String = 'cpu',
-                 name: String = 'Critic', **kwargs: Dict):
+    def __init__(self,
+        input_dim: Integer,
+        critic_dims: Tuple[Integer, ...],
+        *,
+        negative_slope: Float = 0.2,
+        dropout: Float = 0.5,
+        pac: Integer = 10,
+        device: String = 'cpu',
+        **kwargs: Dict,
+    ):
         super(Critic, self).__init__()
 
         self._input_dim = input_dim
@@ -65,9 +71,10 @@ class Critic(nn.Module):
         self._dropout = dropout
         self._pac = pac
         self._device = device
-        self._name = name
 
+        critic_dims = list(critic_dims)
         dims = [input_dim * pac] + critic_dims
+
         sequence = []
         for in_dim, out_dim in zip(dims[:-1], dims[1:]):
             sequence.extend([
@@ -79,9 +86,15 @@ class Critic(nn.Module):
         encoder = nn.Sequential(*sequence)
         self._encoder = encoder 
 
-    def calc_gradient_penalty(self, real: torch.Tensor, fake: torch.Tensor,
-                              lambda_: Integer = 10, **kwargs: Dict) -> torch.Tensor:
+    def calc_gradient_penalty(self,
+        real: torch.Tensor,
+        fake: torch.Tensor,
+        *,
+        lambda_: Integer = 10,
+        **kwargs: Dict,
+    ) -> torch.Tensor:
         """ Compute the gradient penalty according to [3]. """
+
         real_size = real.size
         fake_size = fake.size
 

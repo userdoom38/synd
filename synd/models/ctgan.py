@@ -74,6 +74,7 @@ class CTGAN(Synthesizer):
         batch_size: Integer = 500, 
         critic_steps: Integer = 1, 
         pac: Integer = 10,
+        lambda_: Integer = 10,
         device: Union[String, torch.device] = 'cpu',
         **kwargs: Dict,
     ):
@@ -94,16 +95,70 @@ class CTGAN(Synthesizer):
         self._batch_size = batch_size
         self._critic_steps = critic_steps
         self._pac = pac
+        self._lambda_ = lambda_
         self._device = device
+
+    def _apply_activate(self, data):
+        data_t = []
+        st = 0
+        for column_info in self._transformer.output_info_list:
+            for span_info in column_info:
+                if span_info.activation_fn == 'tanh':
+                    ed = st + span_info.dim
+                    data_t.append(torch.tanh(data[:, st:ed]))
+                    st = ed
+                elif span_info.activation_fn == 'softmax':
+                    ed = st + span_info.dim
+                    data_t.append(F.gumbel_softmax(
+                        data[:, st:ed],
+                        tau=0.2,
+                        hard=False,
+                        ops=1e-10,
+                        dim=-1,
+                    ))
+                    st = ed
+                else:
+                    raise ValueError(f'Unexpected activation function {span_info.activation_fn}.')
+        return torch.cat(data_t, dim=1)
+
+    def _cond_loss(self, data, c, m):
+        """Compute the cross entropy loss on the fixed discrete column."""
+        loss = []
+        st = 0
+        st_c = 0
+        for column_info in self._transformer.output_info_list:
+            for span_info in column_info:
+                if len(column_info) != 1 or span_info.activation_fn != 'softmax':
+                    # not discrete column
+                    st += span_info.dim
+                else:
+                    ed = st + span_info.dim
+                    ed_c = st_c + span_info.dim
+                    tmp = F.cross_entropy(
+                        data[:, st:ed],
+                        torch.argmax(c[:, st_c:ed_c], dim=1),
+                        reduction='none'
+                    )
+                    loss.append(tmp)
+                    st = ed
+                    st_c = ed_c
+
+        loss = torch.stack(loss, dim=1)  # noqa: PD013
+
+        return (loss * m).sum() / data.size()[0]
 
     def fit(self,
         dataset: SingleTable,
         *,
         discrete_columns: List[String, ...],
+        discard_critic: Optional[Boolean] = None,
         epochs: Integer = 100,
         **kwargs: Dict,
     ):
         """ Train the Wasserstein PacGAN on the provided training data. """
+
+        if discard_critic is None:
+            discard_critic = True
 
         if not dataset.is_fitted():
             dataset.fit()
@@ -125,22 +180,141 @@ class CTGAN(Synthesizer):
             pac=self._pac,
         ).to(self._device)
 
-        optimG = optim.Adam(
+        optimizer_G = optim.Adam(
             generator.parameters(), lr=self._generator_lr,
             betas=self._generator_betas, weight_decay=self._generator_decay,
         )
 
-        optimC = optim.Adam(
+        optimizer_C = optim.Adam(
             critic.parameters(), lr=self._critic_lr,
             betas=self._critic_betas, weight_decay=self._critic_decay,
         )
 
         self._generator = generator
-        self._critic = critic
+
+        # prepare latent space noise parameters
+        mean = torch.zeros(
+            self._batch_size,
+            self._embedding_size,
+            device=self._device,
+        )
+        std = mean + 1
+
+        print(f'\tEpoch\tG loss\tC loss')
 
         steps_per_epoch = max(len(data) // self._batch_size, 1)
         for i in range(epochs):
             for step in range(steps_per_epoch):
                 for n in range(self._critic_steps):
-                    pass
+                    z = torch.normal(mean, std)
+                    c = self._sampler.sample_condvec(self._batch_size)
+
+                    if c is None:
+                        c1, m1, col, opt, = (None, ) * 4
+                        real = self._sampler.sample_data(
+                            self._batch_size,
+                            col,
+                            opt,
+                        )
+                    else:
+                        c1, m1, col, opt, = condvec
+                        c1 = torch.Tensor(c1, device=self._device)
+                        m1 = torch.Tensor(m1, device=self._device)
+                        z = torch.cat([z, c1], dim=1)
+
+                        perm = np.arange(self._batch_size)
+                        np.random.shuffle(perm)
+
+                        c2 = c1[perm]
+                        real = self._sampler.sample_data(
+                            self._batch_size,
+                            col[perm],
+                            opt[perm],
+                        )
+
+                    real = torch.Tensor(real.astype(np.float32), device=self._device)
+                    fake = self._generator(z)
+                    fakeact = self._apply_activate(h)
+
+                    if c1 is not None:
+                        fake_cat = torch.cat([fakeact, c1], dim=1)
+                        real_cat = torch.cat([real, c2], dim=1)
+                    else:
+                        fake_cat = fakeact
+                        real_cat = real
+
+                    y_fake = critic(fake_cat)
+                    y_real = critic(real_cat)
+
+                    # calculate gradient penalty
+                    # https://github.com/eriklindernoren/PyTorch-GAN/blob/master/implementations/wgan_gp/wgan_gp.py
+                    fake_size = fake_cat.size
+                    real_size = real_cat.size
+
+                    alpha = torch.rand(real_size(0) // self._pac,
+                        1, 1, device=self._device,
+                    )
+                    alpha = alpha.repeat(1, self._pac, real_size(1)).view(
+                        -1, real_size(1),
+                    )
+
+                    samples = alpha * real_cat + ((1 - alpha) * fake_cat)
+                    enc_samples = critic(samples)
+
+                    grad_outputs = torch.ones(enc_samples.size()).to(self._device)
+                    gradients = torch.autograd.grad(
+                        inputs=samples,
+                        outputs=enc_samples,
+                        grad_outputs=grad_outputs,
+                        create_graph=True,
+                        retain_graph=True,
+                        only_inputs=True,
+                    )[0]
+
+                    gradients = gradients.view(-1, self._pac * real_size(1))
+                    gradient_penalty = self._lambda_ * ((gradients.norm(2, dim=1) - 1) ** 2).mean()
+
+                    loss_c = -(torch.mean(y_real) - torch.mean(y_fake)) + gradient_penalty
+
+                    optimizer_C.zero_grad()
+                    loss_c.backward()
+                    optimizer_C.step()
+
+                # train generator
+                z = torch.normal(mean, std)
+                c = self._sampler.sample_condvec(self._batch_size)
+
+                if condvec is None:
+                    c1, m1, col, opt, = (None, ) * 4
+                else:
+                    c1, m1, col, opt, = condvec
+                    c1 = torch.Tensor(c1, device=self._device)
+                    m1 = torch.Tensor(m1, device=self._device)
+                    z = torch.cat([z, c1], dim=1)
+
+                fake = self._generator(z)
+                fakeact = self._apply_activate(fake)
+
+                if c1 is not None:
+                    y_fake = critic(torch.cat([fakeact, c1], dim=1))
+                else:
+                    y_fake = critic(fakeact)
+
+                if condvec is None:
+                    cross_entropy = 0.0
+                else:
+                    cross_entropy = self._cond_loss(fake, c1, m1)
+
+                loss_g = -torch.mean(y_fake) + cross_entropy
+
+                optimizer_G.zero_grad()
+                loss_g.backward()
+                optimizer_G.step()
+            
+            loss_c = loss_c.detach().cpu()
+            loss_g = loss_g.detach().cpu()
+            print(
+                    f'\t{i + 1:02}\t{loss_g:.4f}\t{loss_c:.4f}',
+                    flush=True,
+            )
 

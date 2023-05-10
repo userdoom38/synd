@@ -33,7 +33,10 @@ import torch.nn as nn
 from .residual import Residual
 
 import builtins
-from typing import Dict, List
+from typing import (
+    Dict,
+    Tuple,
+)
 
 Integer = builtins.int
 Float = builtins.float
@@ -42,24 +45,31 @@ String = builtins.str
 class Generator(nn.Module):
     """ Generator (decoder) neural network for GAN. """
     
-    def __init__(self, emb_dim: Integer, gen_dim: List[Integer], data_dim: Integer,
-                 device: String = 'cpu', name: String = 'Generator', **kwargs: Dict):
+    def __init__(self,
+        embedding_dim: Integer, 
+        generator_dims: Tuple[Integer, ...], 
+        output_dim: Integer,
+        *,
+        device: Union[String, torch.device] = 'cpu',
+        **kwargs: Dict,
+    ):
         super(Generator, self).__init__()
 
-        self._emb_dim = emb_dim
-        self._gen_dim = gen_dim
-        self._data_dim = data_dim 
+        self._embedding_dim = embedding_dim
+        self._generator_dims = generator_dims
+        self._output_dim = output_dim
         self._device = device
-        self._name = name
 
-        dims = [emb_dim] + gen_dim
+        generator_dims = list(generator_dims)
+        dims = [embedding_dim] + generator_dims 
+
         sequence = [
             Residual(in_dim, out_dim)
             for in_dim, out_dim in zip(dims[:-1], dims[1:])
         ]
-
         sequence.append(nn.Linear(dims[-1], data_dim))
-        decoder = nn.Sequential(*sequence)
+
+        decoder = nn.Sequential(*sequence).to(self._device)
         self._decoder = decoder
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
