@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 File created: 2023-05-10
-Last updated: 2023-05-10
+Last updated: 2023-05-11
 """
 
 class Dataset(object):
@@ -37,7 +37,7 @@ class Dataset(object):
 
     def is_fitted(self, *args, **kwargs):
         raise NotImplementedError(
-            f'No logic implemented to verify if `DataTransformer` has already been fitted. ',
-            f'Please implement this, e.g., in a `getattr` was as for `SingleTable`.',
+            f'No logic implemented to verify if `DataTransformer` has already been fitted',
+            f'for {self.__class__}. Please implement this, e.g., using `getattr` as for `SingleTable`.',
         )
 
