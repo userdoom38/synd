@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 File created: 2023-05-09
-Last updated: 2023-05-10
+Last updated: 2023-05-11
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ import torch
 import torch.nn as nn
 
 import builtins
-from typing import Dict
+from typing import Union, Dict
 
 Integer = builtins.int
 String = builtins.str
@@ -40,26 +40,25 @@ class Residual(nn.Module):
     """ Residual block for a neural network. """
 
     def __init__(self,
-        in_dim: Integer,
-        out_dim: Integer,
+        in_: Integer,
+        out: Integer,
         *,
-        device: String = 'cpu',
+        device: Union[String, torch.tensor] = 'cpu',
         **kwargs: Dict,
     ):
         super(Residual, self).__init__()
 
-        self._in_dim = in_dim
-        self._out_dim = out_dim
+        self._in_dim = in_
+        self._out_dim = out 
         self._device = device
-        self._name = name
 
         sequence = [
-            nn.Linear(in_dim, out_dim),
-            nn.BatchNorm1d(out_dim),
+            nn.Linear(in_, out),
+            nn.BatchNorm1d(out),
             nn.ReLU(),
         ]
 
-        affine = nn.Sequential(*sequence)
+        affine = nn.Sequential(*sequence).to(device)
         self._affine = affine
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

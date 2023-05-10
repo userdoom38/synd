@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 File created: 2023-05-09
-Last updated: 2023-05-09
+Last updated: 2023-05-11
 """
 
 from __future__ import annotations
@@ -60,16 +60,14 @@ class Generator(nn.Module):
         self._output_dim = output_dim
         self._device = device
 
-        generator_dims = list(generator_dims)
-        dims = [embedding_dim] + generator_dims 
+        in_ = embedding_dim
+        sequence = []
+        for out in list(generator_dims):
+            sequence += [Residual(in_, out)]
+            in_ += out
 
-        sequence = [
-            Residual(in_dim, out_dim)
-            for in_dim, out_dim in zip(dims[:-1], dims[1:])
-        ]
-        sequence.append(nn.Linear(dims[-1], data_dim))
-
-        decoder = nn.Sequential(*sequence).to(self._device)
+        sequence.append(nn.Linear(in_, output_dim))
+        decoder = nn.Sequential(*sequence).to(device)
         self._decoder = decoder
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

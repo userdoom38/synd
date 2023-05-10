@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 File created: 2023-05-09
-Last updated: 2023-05-10
+Last updated: 2023-05-11
 """
 
 from __future__ import annotations
@@ -35,6 +35,7 @@ import pandas as pd
 
 import torch
 from torch import optim
+import torch.nn.functional as F
 
 from ctgan.data_sampler import DataSampler
 from ctgan.data_transformer import DataTransformer
@@ -113,7 +114,7 @@ class CTGAN(Synthesizer):
                         data[:, st:ed],
                         tau=0.2,
                         hard=False,
-                        ops=1e-10,
+                        eps=1e-10,
                         dim=-1,
                     ))
                     st = ed
@@ -150,7 +151,6 @@ class CTGAN(Synthesizer):
     def fit(self,
         dataset: SingleTable,
         *,
-        discrete_columns: List[String, ...],
         discard_critic: Optional[Boolean] = None,
         epochs: Integer = 100,
         **kwargs: Dict,
@@ -163,8 +163,8 @@ class CTGAN(Synthesizer):
         if not dataset.is_fitted():
             dataset.fit()
 
-        self._transformer = dataset.transformer()
-        self._sampler = dataset.sampler()
+        self._transformer = dataset.transformer
+        self._sampler = dataset.sampler
 
         data_dim = self._transformer.output_dimensions
         
@@ -173,12 +173,14 @@ class CTGAN(Synthesizer):
             self._generator_dims,
             data_dim,
         ).to(self._device)
+        print(generator)
 
         critic = Critic(
             data_dim + self._sampler.dim_cond_vec(),
             self._critic_dims,
             pac=self._pac,
         ).to(self._device)
+        print(critic)
 
         optimizer_G = optim.Adam(
             generator.parameters(), lr=self._generator_lr,
@@ -192,24 +194,23 @@ class CTGAN(Synthesizer):
 
         self._generator = generator
 
-        # prepare latent space noise parameters
         mean = torch.zeros(
             self._batch_size,
-            self._embedding_size,
+            self._embedding_dim,
             device=self._device,
         )
         std = mean + 1
 
         print(f'\tEpoch\tG loss\tC loss')
 
-        steps_per_epoch = max(len(data) // self._batch_size, 1)
+        steps_per_epoch = max(len(dataset) // self._batch_size, 1)
         for i in range(epochs):
             for step in range(steps_per_epoch):
                 for n in range(self._critic_steps):
                     z = torch.normal(mean, std)
-                    c = self._sampler.sample_condvec(self._batch_size)
+                    condvec = self._sampler.sample_condvec(self._batch_size)
 
-                    if c is None:
+                    if condvec is None:
                         c1, m1, col, opt, = (None, ) * 4
                         real = self._sampler.sample_data(
                             self._batch_size,
@@ -218,8 +219,8 @@ class CTGAN(Synthesizer):
                         )
                     else:
                         c1, m1, col, opt, = condvec
-                        c1 = torch.Tensor(c1, device=self._device)
-                        m1 = torch.Tensor(m1, device=self._device)
+                        c1 = torch.Tensor(c1.astype(np.float32)).to(self._device)
+                        m1 = torch.Tensor(m1.astype(np.float32)).to(self._device)
                         z = torch.cat([z, c1], dim=1)
 
                         perm = np.arange(self._batch_size)
@@ -232,9 +233,9 @@ class CTGAN(Synthesizer):
                             opt[perm],
                         )
 
-                    real = torch.Tensor(real.astype(np.float32), device=self._device)
+                    real = torch.Tensor(real.astype(np.float32)).to(self._device)
                     fake = self._generator(z)
-                    fakeact = self._apply_activate(h)
+                    fakeact = self._apply_activate(fake)
 
                     if c1 is not None:
                         fake_cat = torch.cat([fakeact, c1], dim=1)
@@ -280,7 +281,6 @@ class CTGAN(Synthesizer):
                     loss_c.backward()
                     optimizer_C.step()
 
-                # train generator
                 z = torch.normal(mean, std)
                 c = self._sampler.sample_condvec(self._batch_size)
 
@@ -288,8 +288,8 @@ class CTGAN(Synthesizer):
                     c1, m1, col, opt, = (None, ) * 4
                 else:
                     c1, m1, col, opt, = condvec
-                    c1 = torch.Tensor(c1, device=self._device)
-                    m1 = torch.Tensor(m1, device=self._device)
+                    c1 = torch.Tensor(c1.astype(np.float32)).to(self._device)
+                    m1 = torch.Tensor(m1.astype(np.float32)).to(self._device)
                     z = torch.cat([z, c1], dim=1)
 
                 fake = self._generator(z)

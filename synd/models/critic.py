@@ -83,7 +83,7 @@ class Critic(nn.Module):
                 nn.Dropout(dropout),
             ])
 
-        encoder = nn.Sequential(*sequence)
+        encoder = nn.Sequential(*sequence).to(device)
         self._encoder = encoder 
 
     def calc_gradient_penalty(self,

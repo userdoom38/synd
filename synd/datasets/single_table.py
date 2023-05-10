@@ -77,6 +77,9 @@ class SingleTable(Dataset):
         self._max_clusters = max_clusters
         self._weight_threshold = weight_threshold
 
+    def __len__(self) -> Integer:
+        return self._data.shape[0]
+
     def fit(self) -> NoReturn:
         """ 
         Create a `DataTransformer` and fit it with the provided data.
