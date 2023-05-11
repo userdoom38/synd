@@ -22,12 +22,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 File created: 2023-05-09
-Last updated: 2023-05-10
+Last updated: 2023-05-11
 """
 
 from .base import Synthesizer
 from .critic import Critic
-from .ctgan import CTGAN
 from .generator import Generator
 from .residual import Residual
+
+from .ctgan import CTGAN
+from .tgan import TGAN
 
