@@ -1,5 +1,5 @@
 # 🤖 synd [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-SYNthetic Data generation for complex multi-tabular datasets 
+SYNthetic Data generation for complex tabular datasets.
 
 ## 🔒 Requirements
 - At least Python3.6 
