@@ -30,14 +30,15 @@ class Dataset(object):
 
     def fit(self, *args, **kwargs):
         raise NotImplementedError(
-            f'No data fitting method is implemented for {self.__class__}. ',
-            f'Please implement fitting a `DataTransformer` with data, transform ',
-            f'the data, and create a `DataSampler` with the transformed data.',
+            f'No data fitting method is implemented for {self.__class__}. '
+            f'Please implement fitting a `DataTransformer` with data, transform '
+            f'the data, and create a `DataSampler` with the transformed data.'
         )
 
     def is_fitted(self, *args, **kwargs):
         raise NotImplementedError(
-            f'No logic implemented to verify if `DataTransformer` has already been fitted',
-            f'for {self.__class__}. Please implement this, e.g., using `getattr` as for `SingleTable`.',
+            f'No logic implemented to verify if `DataTransformer` has already been '
+            f'fitted for {self.__class__}. Please implement this, e.g., '
+            f'using `getattr` as for `SingleTable`.'
         )
 
