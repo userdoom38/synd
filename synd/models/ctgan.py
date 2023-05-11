@@ -41,26 +41,17 @@ from ctgan.data_sampler import DataSampler
 from ctgan.data_transformer import DataTransformer
 
 from synd.datasets import SingleTable 
+from synd.utils import random_state
+from synd.typing import *
 from .base import Synthesizer
 from .critic import Critic
 from .generator import Generator
 
-import builtins
-from typing import (
-    Tuple,
-    Dict,
-    Union,
-)
-
-Integer = builtins.int
-Float = builtins.float
-String = builtins.str
-Boolean = builtins.bool
-
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 class CTGAN(Synthesizer):
-    """ Conditional Tabular Generative Adversarial Network. """
+    """ Conditional Tabular Generative Adversarial Network,
+    (with packing, Wasserstein loss, and gradient penalty). """
     
     def __init__(self, *,
         embedding_dim: Integer = 128, 
@@ -79,6 +70,7 @@ class CTGAN(Synthesizer):
         device: Union[String, torch.device] = 'cpu',
         **kwargs: Dict,
     ):
+        super(CTGAN, self).__init__()
 
         assert not batch_size % 2
 
@@ -148,19 +140,18 @@ class CTGAN(Synthesizer):
 
         return (loss * m).sum() / data.size()[0]
 
+    @random_state
     def fit(self,
         dataset: SingleTable,
         *,
-        discard_critic: Optional[Boolean] = None,
+        discard_critic: Boolean = True,
         epochs: Integer = 100,
         **kwargs: Dict,
     ):
         """ Train the Wasserstein PacGAN on the provided training data. """
 
-        if discard_critic is None:
-            discard_critic = True
-
         if not dataset.is_fitted():
+            log.info(f'fitting {dataset}')
             dataset.fit()
 
         self._transformer = dataset.transformer
@@ -173,14 +164,12 @@ class CTGAN(Synthesizer):
             self._generator_dims,
             data_dim,
         ).to(self._device)
-        print(generator)
 
         critic = Critic(
             data_dim + self._sampler.dim_cond_vec(),
             self._critic_dims,
             pac=self._pac,
         ).to(self._device)
-        print(critic)
 
         optimizer_G = optim.Adam(
             generator.parameters(), lr=self._generator_lr,
@@ -201,7 +190,8 @@ class CTGAN(Synthesizer):
         )
         std = mean + 1
 
-        print(f'\tEpoch\tG loss\tC loss')
+        print(f'Epoch\t\tG loss\t\tC loss')
+        print('=' * 45)
 
         steps_per_epoch = max(len(dataset) // self._batch_size, 1)
         for i in range(epochs):
@@ -314,7 +304,42 @@ class CTGAN(Synthesizer):
             loss_c = loss_c.detach().cpu()
             loss_g = loss_g.detach().cpu()
             print(
-                    f'\t{i + 1:02}\t{loss_g:.4f}\t{loss_c:.4f}',
-                    flush=True,
+                f'{i + 1:02}\t\t{loss_g:.4f}\t\t{loss_c:.4f}',
+                flush=True,
             )
+
+        if not discard_critic:
+            log.info('saving trained critic')
+            self._critic = critic
+
+    @random_state
+    def sample(self,
+        n_samples: Integer,
+        **kwargs: Dict,
+    ) -> pd.DataFrame:
+        """ Sample synthetic data from the trained generator. """
+
+        batch_sizes = [self._batch_size for _ in range(n_samples // self._batch_size)]
+        batch_sizes += [n_samples - sum(batch_sizes)]
+
+        data = []
+        with torch.no_grad():
+            self._generator.eval()
+            for batch_size in batch_sizes:
+                mean = torch.zeros(batch_size, self._embedding_dim)
+                std = mean + 1
+                z = torch.normal(mean, std).to(self._device)
+
+                condvec = self._sampler.sample_original_condvec(batch_size)
+
+                if condvec is not None:
+                    c1 = torch.Tensor(condvec.astype(np.float32)).to(self._device)
+                    z = torch.cat([z, c1], dim=1)
+
+                fake = self._generator(z)
+                fakeact = self._apply_activate(fake)
+                data.append(fakeact.cpu().numpy())
+
+        data = np.concatenate(data, axis=0)
+        return self._transformer.inverse_transform(data)
 
