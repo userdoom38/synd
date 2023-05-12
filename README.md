@@ -33,7 +33,7 @@ Ongoing work:
 ## 🔒 Requirements
 - If installing locally, you need the dependencies from [requirements.txt](https://github.com/wilhelmagren/synd/blob/main/requirements.txt) file.
 - To train and sample efficiently you need a CUDA compatible GPU, check out [this](https://developer.nvidia.com/cuda-gpus) link.
-- Python >=3.6 
+- Python <= 3.10 & >= 3.7
 
 
 ## 📦 Installation
