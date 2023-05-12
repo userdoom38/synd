@@ -1,0 +1,30 @@
+name: Unit tests
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+jobs:
+  tests:
+    name: Unit tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ macos-latest, windows-latest, ubuntu-latest ]
+        python: [ 3.6, 3.7, 3.8 ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up Python${{ matrix.python }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install coverage
+      - name: Run tests
+        run: coverage run -m unittest tests
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+
