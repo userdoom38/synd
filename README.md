@@ -10,6 +10,7 @@
 </div>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![codecov](https://codecov.io/github/wilhelmagren/synd/branch/main/graph/badge.svg?token=PBUVJ2LNMM)](https://codecov.io/github/wilhelmagren/synd)
 [![Lines of code](https://img.shields.io/tokei/lines/github/wilhelmagren/synd)](https://github.com/wilhelmagren/synd/tree/58bcd31b37c5bde0c8656717ed6c0f81cc3ec562/synd)
 
 </div>
