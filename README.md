@@ -15,10 +15,12 @@
 </div>
 
 ## 🔎 Overview
-SYNthetic Data generation for complex datasets. Comply with data governance by utilizing the power
-of synthetically generated data.
+SYNthetic Data generation for complex datasets. Fully open-source with data compliance at heart.
+
+Seamlessly comply with data governance by utilizing the power of synthetically generated data.
 
 Ongoing work:
+- Identifiable fields anonymization
 - Multi-tabular data
 - Sequential data
 - Data & model lineage
