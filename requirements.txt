@@ -1,8 +1,8 @@
-numpy==1.24.3
-pandas==2.0.1
+numpy>=1.21
+pandas>=1.21
 matplotlib==3.7.1
 
 --find-links https://download.pytorch.org/whl/torch_stable.html
-torch==2.0.1+cpu
+torch>=1.7.0+cpu
 ctgan==0.7.2
 sdv==1.1.0
