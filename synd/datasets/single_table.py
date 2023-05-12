@@ -22,15 +22,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 File created: 2023-05-10
-Last updated: 2023-05-10
+Last updated: 2023-05-12
 """
 
 import logging
 import pandas as pd
 
+from datetime import datetime
+
 from ctgan.data_transformer import DataTransformer
 from ctgan.data_sampler import DataSampler
 
+from synd.utils import create_timestamp
 from .base import Dataset
 
 import builtins
@@ -47,7 +50,7 @@ Float = builtins.float
 String = builtins.str
 Boolean = builtins.bool
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 class SingleTable(Dataset):
     """ """
@@ -60,6 +63,7 @@ class SingleTable(Dataset):
         discrete_columns: Optional[List[String]] = None,
         max_clusters: Integer = 10,
         weight_threshold: Float = 0.005,
+        dataset_name: Optional[String] = None,
         **kwargs: Dict,
     ):
 
@@ -69,6 +73,10 @@ class SingleTable(Dataset):
         if discrete_columns is None:
             discrete_columns = []
 
+        if dataset_name is None:
+            dataset_name = self.__class__.__name__ + create_timestamp()
+            log.debug(f'setting dataset name to: {dataset_name}')
+
         self._data = data
         self._metadata = metadata
 
@@ -76,6 +84,7 @@ class SingleTable(Dataset):
         self._discrete_columns = discrete_columns
         self._max_clusters = max_clusters
         self._weight_threshold = weight_threshold
+        self._dataset_name = dataset_name
 
     def __len__(self) -> Integer:
         return self._data.shape[0]
@@ -90,14 +99,17 @@ class SingleTable(Dataset):
         to transform the generated data to the correct output format.
         """
 
+        log.debug('creating `DataTransformer`')
         transformer = DataTransformer(
             max_clusters=self._max_clusters,
             weight_threshold=self._weight_threshold,
         )
 
+        log.debug('fitting `DataTransformer`')
         transformer.fit(self._data, self._discrete_columns)
         data = transformer.transform(self._data)
 
+        log.debug('creating `DataSampler`')
         sampler = DataSampler(
             data,
             transformer.output_info_list,
@@ -113,6 +125,18 @@ class SingleTable(Dataset):
         `dataframe`. Then return `True` if it is fitted, else `False`.
         """
         return hasattr(self._transformer, 'dataframe')
+    
+    @property
+    def name(self) -> String:
+        return self._dataset_name
+    
+    @property
+    def data(self) -> pd.DataFrame:
+        return self._data
+    
+    @property
+    def metadata(self) -> Dict:
+        return self._metadata
     
     @property
     def transformer(self) -> Optional[DataTransformer]:
