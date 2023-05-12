@@ -15,9 +15,9 @@
 </div>
 
 ## 🔎 Overview
-SYNthetic Data generation for complex datasets. Fully open-source with data compliance at heart.
+SYNthetic Data generation for complex datasets. Seamlessly speed up testing and data integration by utilizing the power of synthetically generated data.
 
-Seamlessly comply with data governance by utilizing the power of synthetically generated data.
+Fully open-source with data transparency and compliance at heart.
 
 Ongoing work:
 - Identifiable fields anonymization
