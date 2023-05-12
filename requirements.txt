@@ -1,6 +1,6 @@
 numpy==1.24.3
 pandas==2.0.1
-atplotlib==3.7.1
+matplotlib==3.7.1
 
 --find-links https://download.pytorch.org/whl/torch_stable.html
 torch==2.0.1+cpu
