@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 File created: 2023-05-11
-Last updated: 2023-05-11
+Last updated: 2023-05-12
 """
 
 from __future__ import annotations
@@ -36,11 +36,14 @@ import torch
 import torch.nn.functional as F
 from torch import optim
 
+from datetime import datetime
+
 from ctgan.data_sampler import DataSampler
 from ctgan.data_transformer import DataTransformer
 
+from synd.datautil import SampleSet
 from synd.datasets import SingleTable
-from synd.utils import random_state
+from synd.utils import random_state, create_timestamp
 from synd.typing import *
 from .base import Synthesizer
 from .critic import Critic
@@ -116,31 +119,6 @@ class TGAN(Synthesizer):
 
         return torch.cat(data_t, dim=1)
 
-    def _cond_loss(self, data, c, m):
-        """ Compute the cross entropy loss on the fixed discrete column. """
-        loss = []
-        st = 0
-        st_c = 0
-        for column_info in self._transformer.output_info_list:
-            for span_info in column_info:
-                if len(column_info) != 1 or span_info.activation_fn != 'softmax':
-                    # not discrete column
-                    st += span_info.dim
-                else:
-                    ed = st + span_info.dim
-                    ed_c = st_c + span_info.dim
-                    tmp = F.cross_entropy(
-                        data[:, st:ed],
-                        torch.argmax(c[:, st_c:ed_c], dim=1),
-                        reduction='none'
-                    )
-                    loss.append(tmp)
-                    st = ed
-                    st_c = ed_c
-
-        loss = torch.stack(loss, dim=1)
-        return (loss * m).sum() / data.size()[0]
-
     @random_state
     def fit(self,
         dataset: SingleTable,
@@ -152,10 +130,11 @@ class TGAN(Synthesizer):
         """ Train the Wasserstein TGAN with packing and gradient penalty. """
         
         if not dataset.is_fitted():
+            log.debug('fitting `SingleTable` dataset')
             dataset.fit()
 
         self._transformer = dataset.transformer
-        self._sampler = dataset.sampler
+        sampler = dataset.sampler
 
         data_dim = self._transformer.output_dimensions
 
@@ -201,7 +180,7 @@ class TGAN(Synthesizer):
         for i in range(epochs):
             for step in range(steps_per_epoch):
                 for n in range(self._critic_steps):
-                    real = torch.Tensor(self._sampler.sample_data(
+                    real = torch.Tensor(sampler.sample_data(
                         self._batch_size, None, None,
                     ).astype(np.float32)).to(self._device)
 
@@ -263,17 +242,27 @@ class TGAN(Synthesizer):
                 flush=True,
             )
 
+        if not discard_critic:
+            log.debug('saving trained critic')
+            self._critic = critic
+
     @random_state
     def sample(self,
         n_samples: Integer,
+        dataset: SingleTable,
+        *,
+        sampleset_name: Optional[String] = None,
         **kwargs: Dict,
-    ) -> pd.DataFrame:
+    ) -> SampleSet:
         """ Sample synthetic data from the trained generator. """
+
+        if sampleset_name is None:
+            sampleset_name = SampleSet.__name__ + create_timestamp()
 
         batch_sizes = [self._batch_size for _ in range(n_samples // self._batch_size)]
         batch_sizes += [n_samples - sum(batch_sizes)]
 
-        data = []
+        samples = []
         with torch.no_grad():
             self._generator.eval()
             for batch_size in batch_sizes:
@@ -283,8 +272,20 @@ class TGAN(Synthesizer):
 
                 fake = self._generator(z)
                 fakeact = self._apply_activate(fake)
-                data.append(fakeact.cpu().numpy())
+                samples.append(fakeact.cpu().numpy())
 
-        data = np.concatenate(data, axis=0)
-        return self._transformer.inverse_transform(data)
+        samples = self._transformer.inverse_transform(np.concatenate(samples, axis=0))
+
+        return SampleSet.single_table(
+            name=sampleset_name,
+            data=samples,
+            metadata=dataset.metadata,
+            model=self,
+            training_data=dataset.data,
+            data_sampler=dataset.sampler,
+            data_transformer=dataset.transformer,
+            timestamp=create_timestamp(),
+            model_name=self.__class__.__name__,
+            dataset_name=dataset.name,
+        )
 

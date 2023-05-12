@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 File created: 2023-05-09
-Last updated: 2023-05-11
+Last updated: 2023-05-12
 """
 
 from __future__ import annotations
@@ -37,11 +37,14 @@ import torch
 from torch import optim
 import torch.nn.functional as F
 
+from datetime import datetime
+
 from ctgan.data_sampler import DataSampler
 from ctgan.data_transformer import DataTransformer
 
+from synd.datautil import SampleSet
 from synd.datasets import SingleTable 
-from synd.utils import random_state
+from synd.utils import random_state, create_timestamp
 from synd.typing import *
 from .base import Synthesizer
 from .critic import Critic
@@ -151,11 +154,12 @@ class CTGAN(Synthesizer):
         """ Train the Wasserstein PacGAN on the provided training data. """
 
         if not dataset.is_fitted():
-            log.info(f'fitting {dataset}')
+            log.debug(f'fitting `SingleTable` dataset')
             dataset.fit()
 
         self._transformer = dataset.transformer
         self._sampler = dataset.sampler
+        self._metadata = dataset.metadata
 
         data_dim = self._transformer.output_dimensions
         
@@ -309,20 +313,26 @@ class CTGAN(Synthesizer):
             )
 
         if not discard_critic:
-            log.info('saving trained critic')
+            log.debug('saving trained critic')
             self._critic = critic
 
     @random_state
     def sample(self,
         n_samples: Integer,
+        dataset: SingleTable,
+        *,
+        sampleset_name: Optional[String] = None,
         **kwargs: Dict,
-    ) -> pd.DataFrame:
+    ) -> SampleSet:
         """ Sample synthetic data from the trained generator. """
+
+        if sampleset_name is None:
+            sampleset_name = SampleSet.__name__ + create_timestamp()
 
         batch_sizes = [self._batch_size for _ in range(n_samples // self._batch_size)]
         batch_sizes += [n_samples - sum(batch_sizes)]
 
-        data = []
+        samples = []
         with torch.no_grad():
             self._generator.eval()
             for batch_size in batch_sizes:
@@ -338,8 +348,20 @@ class CTGAN(Synthesizer):
 
                 fake = self._generator(z)
                 fakeact = self._apply_activate(fake)
-                data.append(fakeact.cpu().numpy())
+                samples.append(fakeact.cpu().numpy())
 
-        data = np.concatenate(data, axis=0)
-        return self._transformer.inverse_transform(data)
+        samples = self._transformer.inverse_transform(np.concatenate(samples, axis=0))
+
+        return SampleSet.single_table(
+            name=sampleset_name,
+            data=samples,
+            metadata=dataset.metadata,
+            model=self,
+            training_data=dataset.data,
+            data_sampler=self._sampler,
+            data_transformer=self._transformer,
+            timestamp=create_timestamp(),
+            model_name=self.__class__.__name__,
+            dataset_name=dataset.name,
+        )
 
