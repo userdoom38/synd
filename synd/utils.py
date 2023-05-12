@@ -22,23 +22,27 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 File created: 2023-05-11
-Last updated: 2023-05-11
+Last updated: 2023-05-12
 """
 
 import contextlib
 import numpy as np
 import torch
 
+import pytz as timezone
+from datetime import datetime
+
 from synd.typing import *
 
-# for information on context and random number generator management
-# https://github.com/sdv-dev/CTGAN/blob/master/ctgan/synthesizers/base.py
+def create_timestamp(strformat: String = '%Y%m%d-%H:%M:%S') -> String:
+    return datetime.now(timezone.utc).strftime(strformat)
 
 @contextlib.contextmanager
 def set_rng_states(
     state: Union[np.random.RandomState, torch.Generator],
     func: Callable,
 ):
+    """ """
 
     original_np_state = np.random.get_state()
     original_torch_state = torch.get_rng_state()
