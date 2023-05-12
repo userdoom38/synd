@@ -15,12 +15,24 @@
 </div>
 
 ## 🔎 Overview
-SYNthetic Data generation for complex tabular datasets.
+SYNthetic Data generation for complex datasets. Comply with data governance by utilizing the power
+of synthetically generated data.
+
+Ongoing work:
+- Multi-tabular data
+- Sequential data
+- Data & model lineage
+- Multi GPU support
+- Database connections (?)
+- Weights & Biases support (?)
+- ...
+
 
 ## 🔒 Requirements
-- At least Python3.6 
-- requirements.txt
-- for fast training and sampling you need CUDA compatible GPU
+- If installing locally, you need the dependencies from [requirements.txt](https://github.com/wilhelmagren/synd/blob/main/requirements.txt) file.
+- To train and sample efficiently you need a CUDA compatible GPU, check out [this](https://developer.nvidia.com/cuda-gpus) link.
+- Python >=3.6 
+
 
 ## 📦 Installation
 Either clone this repository and perform a local install accordingly
@@ -33,6 +45,7 @@ or install the most recent release from the Python Package Index (PyPI).
 ```
 pip install <tbd>
 ```
+
 
 ## 🚀 Example usage
 ```python
