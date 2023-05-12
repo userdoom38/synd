@@ -1,5 +1,5 @@
 numpy>=1.21
-pandas>=1.21
+pandas>=1.2.4
 matplotlib==3.7.1
 
 --find-links https://download.pytorch.org/whl/torch_stable.html
