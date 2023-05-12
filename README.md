@@ -15,9 +15,9 @@
 </div>
 
 ## 🔎 Overview
-SYNthetic Data generation for complex datasets. Fully open-source with data compliance at heart.
+SYNthetic Data generation for complex datasets. Seamlessly speed up testing and data integration by utilizing the power of synthetically generated data.
 
-Seamlessly comply with data governance by utilizing the power of synthetically generated data.
+Fully open-source with data transparency and compliance at heart.
 
 Ongoing work:
 - Identifiable fields anonymization
@@ -33,7 +33,7 @@ Ongoing work:
 ## 🔒 Requirements
 - If installing locally, you need the dependencies from [requirements.txt](https://github.com/wilhelmagren/synd/blob/main/requirements.txt) file.
 - To train and sample efficiently you need a CUDA compatible GPU, check out [this](https://developer.nvidia.com/cuda-gpus) link.
-- Python >=3.6 
+- Python <= 3.10 & >= 3.7
 
 
 ## 📦 Installation
