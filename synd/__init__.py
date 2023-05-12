@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 File created: 2023-05-08
-Last updated: 2023-05-09
+Last updated: 2023-05-12
 """
 
 from synd.models import *
@@ -40,8 +40,8 @@ from synd.models import *
 # use the function `set_logging_level` with preferred logging level.
 
 import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.DEBUG)
@@ -51,13 +51,18 @@ formatter = logging.Formatter(
 )
 
 console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
+log.addHandler(console_handler)
 
-from typing import NoReturn
 import builtins
+import numpy as np
+import torch
 
 Integer = builtins.int
 
-def set_logging_level(level: Integer) -> NoReturn:
-    logger.setLevel(level)
+def set_log_level(level: Integer):
+    log.setLevel(level)
+
+def set_rng_seed(seed: Integer):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
