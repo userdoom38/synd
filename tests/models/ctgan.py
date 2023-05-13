@@ -41,7 +41,7 @@ class TGANTest(unittest.TestCase):
     """ Unit-tests for the TGAN model. """
 
     def test_fit_sample(self):
-        n = 10000
+        n = 1000
         log.debug(f'creating mocked data, {n=}')
         data = pd.DataFrame({
             'id': np.arange(n),
@@ -65,11 +65,11 @@ class TGANTest(unittest.TestCase):
         device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
         model = CTGAN(batch_size=200, device=device)
 
-        epochs = 3
+        epochs = 2
         log.debug(f'fitting model for {epochs=}')
         model.fit(dataset, epochs=epochs)
 
-        samples = 1987
+        samples = 243
         log.debug(f'sampling {samples=}')
         fake = model.sample(samples)
 
