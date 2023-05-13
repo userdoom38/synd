@@ -88,7 +88,7 @@ class TabularTransformer(object):
             transform_info.append(column_transform_info)
 
         self._transform_info = transform_info
-        self._column_info
+        self._column_info = column_info
 
     @staticmethod
     def _fit_discrete(
