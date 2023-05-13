@@ -24,10 +24,13 @@ Ongoing work:
 - Identifiable fields anonymization
 - Multi-tabular data
 - Sequential data
+- Image data
 - Data & model lineage
 - Multi GPU support
 - Database connections (?)
 - Weights & Biases support (?)
+- Preprocessor transformers
+- Data aware samplers
 - ...
 
 
