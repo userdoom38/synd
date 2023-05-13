@@ -37,7 +37,7 @@ from synd.datasets import SingleTable
 
 log = logging.getLogger(__name__)
 
-class TGANTest(unittest.TestCase):
+class CTGANTest(unittest.TestCase):
     """ Unit-tests for the TGAN model. """
 
     def test_fit_sample(self):
@@ -71,7 +71,7 @@ class TGANTest(unittest.TestCase):
 
         samples = 243
         log.debug(f'sampling {samples=}')
-        fake = model.sample(samples)
+        fake = model.sample(samples, dataset)._data
 
         self.assertTrue(len(fake) == samples)
         self.assertTrue(len(fake.columns) == len(data.columns))

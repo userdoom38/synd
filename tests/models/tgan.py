@@ -71,7 +71,7 @@ class TGANTest(unittest.TestCase):
 
         samples = 247
         log.debug(f'sampling {samples=}')
-        fake = model.sample(samples)
+        fake = model.sample(samples, dataset)._data
 
         self.assertTrue(len(fake) == samples)
         self.assertTrue(len(fake.columns) == len(data.columns))
