@@ -42,11 +42,13 @@ log = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class ActivationFnInfo:
+    __slots__ = ['dim', 'activation_fn']
     dim: Integer
     activation_fn: String
 
 @dataclass(frozen=True)
 class ColumnTransformInfo:
+    __slots__ = ['name', 'type_', 'info', 'dims']
     name: String
     type_: String
     info: List[ActivationFnInfo]
