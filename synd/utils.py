@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 File created: 2023-05-11
-Last updated: 2023-05-12
+Last updated: 2023-05-13
 """
 
 import contextlib
@@ -37,9 +37,12 @@ from synd.typing import *
 def create_timestamp(strformat: String = '%Y%m%d-%H:%M:%S') -> String:
     return datetime.now(timezone.utc).strftime(strformat)
 
+def get_rng_state() -> Dict:
+    return {'numpy': np.random.get_state(), 'torch': torch.get_rng_state()}
+
 @contextlib.contextmanager
 def set_rng_states(
-    state: Union[np.random.RandomState, torch.Generator],
+    state: Tuple[np.random.RandomState, torch.Generator],
     func: Callable,
 ):
     """ """
@@ -66,7 +69,8 @@ def set_rng_states(
         np.random.set_state(original_np_state)
         torch.set_rng_state(original_torch_state)
 
-def random_state(func: Callable) -> Any:
+def random_state(func: Callable) -> Callable:
+    """ """
     def wrapper(self, *args, **kwargs):
         if self._rng_state is None:
             return func(self, *args, **kwargs)
